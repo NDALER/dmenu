@@ -1,58 +1,21 @@
 --- dmenu.c
 +++ dmenu.c
-@@ -445,6 +447,27 @@ insert:
- 		calcoffsets();
- 		break;
- 	case XK_Left:
-+		if (columns > 1) {
-+			if (!sel)
-+				return;
-+			tmpsel = sel;
-+			for (i = 0; i < lines; i++) {
-+				if (!tmpsel->left || tmpsel->left->right != tmpsel) {
-+					if (offscreen)
-+						break;
-+					return;
-+				}
-+				if (tmpsel == curr)
-+					offscreen = 1;
-+				tmpsel = tmpsel->left;
-+			}
-+			sel = tmpsel;
-+			if (offscreen) {
-+				curr = prev;
-+				calcoffsets();
-+			}
-+			break;
-+		}
- 		if (cursor > 0 && (!sel || !sel->left || lines > 0)) {
- 			cursor = nextrune(-1);
- 			break;
-@@ -481,6 +504,27 @@ insert:
- 			sel->out = 1;
- 		break;
- 	case XK_Right:
-+		if (columns > 1) {
-+			if (!sel)
-+				return;
-+			tmpsel = sel;
-+			for (i = 0; i < lines; i++) {
-+				if (!tmpsel->right ||  tmpsel->right->left != tmpsel) {
-+					if (offscreen)
-+						break;
-+					return;
-+				}
-+				tmpsel = tmpsel->right;
-+				if (tmpsel == next)
-+					offscreen = 1;
-+			}
-+			sel = tmpsel;
-+			if (offscreen) {
-+				curr = next;
-+				calcoffsets();
-+			}
-+			break;
-+		}
- 		if (text[cursor] != '\0') {
- 			cursor = nextrune(+1);
- 			break;
+@@ -46,6 +46,7 @@ static struct item *items = NULL;
+ static struct item *matches, *matchend;
+ static struct item *prev, *curr, *next, *sel;
+ static int mon = -1, screen;
++static int use_text_input = 0;
+ 
+ static Atom clip, utf8;
+ static Display *dpy;
+@@ -710,7 +714,9 @@ main(int argc, char *argv[])
+ 		else if (!strcmp(argv[i], "-i")) { /* case-insensitive item matching */
+ 			fstrncmp = strncasecmp;
+ 			fstrstr = cistrstr;
+-		} else if (i + 1 == argc)
++		} else if (!strcmp(argv[i], "-t")) /* favors text input over selection */
++			use_text_input = 1;
++		else if (i + 1 == argc)
+ 			usage();
+ 		/* these options take one argument */
+ 		else if (!strcmp(argv[i], "-l"))   /* number of lines in vertical list */
